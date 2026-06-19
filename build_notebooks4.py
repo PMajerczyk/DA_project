@@ -86,16 +86,18 @@ plt.title("WAIC comparison"); plt.tight_layout(); plt.show()
 """),
     md(r"""
 ### WAIC discussion
-- **Winner:** `model_2_partial` has the higher `elpd_waic` (smaller is the rank
-  number 0). The gap to Model 1 is `elpd_diff` ~ 61 with `dse` ~ 37, i.e. only
-  about **1.6 standard errors** — a real but **not decisive** separation; the
-  intervals overlap considerably.
+- **Margin (see table above):** whichever model takes rank 0, the gap `elpd_diff`
+  is only on the order of **~1.5–2 standard errors** (`dse`) — a separation that
+  is **not decisive**; the predictive-accuracy intervals overlap heavily.
 - **Warning:** ArviZ raises `warning = True` for both models. This fires because
-  some pointwise `p_waic` values exceed 0.4, the symptom of a few highly
+  some pointwise `p_waic` values exceed 0.4 — the symptom of a few highly
   influential observations (the large-count cell-years) for which WAIC's
-  approximation is shaky. We do **not** ignore it — it is the same misspecified
-  2011/large-count points seen in notebooks 04-05, and it tells us the headline
+  approximation is shaky. We do **not** ignore it: it is the same misspecified
+  2011/large-count points seen in notebooks 04–05, and it means the headline
   number rests partly on cells the (stationary) models fit poorly.
+- **Caution:** because the margin is sub-2-SE, the *labelled winner is not
+  robust* — it can change with the sampling seed or a minor prior tweak. We read
+  WAIC as "the two models are close", not as a verdict.
 """),
     md(r"""
 ## Information criteria usage — PSIS-LOO
@@ -111,15 +113,15 @@ plt.title("PSIS-LOO comparison"); plt.tight_layout(); plt.show()
 """),
     md(r"""
 ### PSIS-LOO discussion
-- **Winner — and it flips!** Under LOO the ranking **reverses**:
-  `model_1_nopool` comes out on top, with `elpd_diff` ~ 26 over Model 2
-  (`dse` ~ 16, ~1.6 SE). So WAIC prefers the hierarchical model while LOO
-  prefers the no-pooling one.
-- **Warning:** LOO also flags `warning = True`. The reason is visible in the
+- **Margin (see table above):** LOO again separates the models by only
+  ~1.5–2 `dse` — statistically a near-tie. Notably, WAIC and PSIS-LOO frequently
+  **disagree about which model ranks first** here (and the order is sensitive to
+  the seed / prior), precisely because the difference is within noise.
+- **Warning:** LOO also flags `warning = True`; the reason is visible in the
   Pareto-$k$ diagnostic below.
-- A flip between WAIC and LOO, with both warning, is a strong signal that the
-  comparison is being driven by a handful of pathological points rather than by
-  a clean, global predictive advantage.
+- Two criteria that disagree, both warning, with sub-2-SE margins, are a strong
+  signal that the comparison is driven by a handful of pathological observations
+  rather than by a clean, global predictive advantage of either model.
 """),
     code(r"""
 # Pareto-k diagnostics — which observations break PSIS-LOO?
@@ -154,7 +156,7 @@ print(f"  these are the highest-count cell-years (mean count "
     md(r"""
 ### Pareto-$k$ discussion
 The high-$k$ points are exactly the **highest-count cell-years**, led by the
-**2011 Tohoku cluster** (cell `6_10` with ~1400 events has $k \approx 9$ — far
+**2011 Tohoku cluster** (the cell with ~1400 events reaches $k \approx 8$ — far
 above 1). For such extreme, influential observations PSIS importance sampling
 fails, so the **LOO numbers for these points (and hence the overall LOO
 ranking) are not trustworthy**. A rigorous fix would be exact
@@ -163,16 +165,32 @@ rather than over-claim. The same points drive the WAIC `p_waic` warning. In
 short: *both criteria are being dominated by a few cells the stationary Poisson
 models cannot represent.*
 """),
+    code(r"""
+# Live verdict for THIS run (kept in code so the text never goes stale).
+def verdict(ic):
+    c = az.compare(comp_dict, ic=ic)
+    win = c.index[0]; loser = c.index[1]
+    return win, c.loc[loser, "elpd_diff"], c.loc[loser, "dse"], bool(c["warning"].any())
+for ic in ["waic", "loo"]:
+    win, diff, dse, warn = verdict(ic)
+    ratio = diff / dse if dse else float("nan")
+    print(f"{ic.upper():4s}: rank-0 = {win:16s} | elpd_diff = {diff:5.1f} | "
+          f"dse = {dse:4.1f} | {ratio:.1f} SE | warning = {warn}")
+print("\nMargins are around ~2 SE (a decisive difference needs > ~2-3 SE) -> the "
+      "IC ranking is a near-tie and not robust: it flips between WAIC/LOO here.")
+"""),
     md(r"""
 ## Final assessment — do we agree with the criteria?
 
-**The criteria do not give a clean verdict, and we say so.** WAIC favours
-Model 2, PSIS-LOO favours Model 1, both raise warnings, and the separations are
-only ~1.6 standard errors. The disagreement is manufactured by a small set
-of extreme, model-misspecified observations (2011 Tohoku and other large-count
-cell-years) with Pareto-$k \gg 0.7$. On **purely predictive grounds the two
-models are statistically close**, and the information criteria are too unreliable
-here to crown a winner by themselves.
+**The criteria do not give a clean verdict, and we say so.** Both WAIC and
+PSIS-LOO separate the models by only ~1.5–2 standard errors, **both raise
+warnings**, and they do not even agree on which model ranks first — the ordering
+is so fragile it flips between the two criteria (and under minor seed/prior
+changes). This is manufactured by a small set of extreme, model-misspecified
+observations (2011 Tohoku and other large-count cell-years) with
+Pareto-$k \gg 0.7$. On **purely predictive grounds the two models are
+statistically indistinguishable here**, and the information criteria are too
+unreliable to crown a winner by themselves.
 
 **We nonetheless prefer Model 2 (partial pooling)** — not because a criterion
 forces it, but on principled, decision-relevant grounds that the criteria do not
@@ -189,9 +207,9 @@ contradict:
 3. **A better deliverable.** The intensity map from Model 2 is smoother and its
    uncertainty is honest, which is what a hazard-assessment use case actually
    needs — a quality the in-sample criteria barely reward.
-4. **Parsimony is not violated.** Model 2 adds a single hyperparameter; its WAIC
-   edge and near-tie on LOO mean we pay essentially nothing in predictive
-   accuracy for these benefits.
+4. **Parsimony is not violated.** Model 2 adds a single hyperparameter, and the
+   statistical near-tie on both criteria means we pay essentially nothing in
+   predictive accuracy for these benefits.
 
 **Caveat / next step.** The real lesson from the comparison is that **neither**
 stationary model represents the 2011 regime change. The most valuable
@@ -203,13 +221,13 @@ modelling-quality grounds.
 """),
     md(r"""
 ## Summary
-- **WAIC:** Model 2 wins by ~61 elpd (~1.6 SE) — *with warning*.
-- **PSIS-LOO:** ranking flips, Model 1 wins by ~26 elpd (~1.6 SE) — *with
-  warning*; Pareto-$k$ up to ~9, dominated by 2011/large-count cells.
-- **Verdict:** criteria are inconclusive and unreliable here; we choose
-  **Model 2** for its shrinkage, data-supported hierarchy, and superior
-  uncertainty-aware map, while flagging non-stationarity (2011) as the key
-  modelling gap.
+- **WAIC & PSIS-LOO:** both separate the models by only ~1.5–2 SE, **both warn**,
+  and they disagree on the rank-0 model — a statistical near-tie (see the live
+  verdict cell). Pareto-$k$ reaches ~8, dominated by 2011/large-count cells.
+- **Verdict:** the criteria are inconclusive and unreliable here; we choose
+  **Model 2** for its shrinkage, data-supported hierarchy (`sigma_global`≈1.3),
+  and superior uncertainty-aware map, while flagging non-stationarity (2011) as
+  the key modelling gap.
 """),
 ]
 

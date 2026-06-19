@@ -5,16 +5,17 @@
 Kryteria informacyjne szacują **przewidywaną trafność modelu poza próbą** przez
 tzw. `elpd` (expected log pointwise predictive density) — im wyższe, tym lepiej.
 
-- **WAIC:** wygrywa Model 2 z przewagą `elpd_diff ≈ 61` przy błędzie
-  `dse ≈ 37` — czyli tylko ~1,6 błędu standardowego. To różnica realna, ale
-  **nierozstrzygająca**.
-- **PSIS-LOO:** ranking **się odwraca** — wygrywa Model 1 z `elpd_diff ≈ 26`
-  (`dse ≈ 16`, też ~1,6 SE).
+- **WAIC i PSIS-LOO** rozdzielają modele tylko o **~1,5–2 błędy standardowe**
+  (`dse`), przy czym **oba dają ostrzeżenia** i **nie zgadzają się**, który model
+  jest pierwszy — kolejność jest tak krucha, że odwraca się między kryteriami (i
+  przy drobnej zmianie ziarna/priora). To statystyczny **remis**.
+- Notebook 06 wypisuje „werdykt na żywo" dla danego uruchomienia, żeby tekst nigdy
+  się nie zdezaktualizował.
 
 Co znaczą poszczególne wielkości:
-- `elpd_diff` — różnica trafności względem najlepszego modelu (0 dla zwycięzcy);
+- `elpd_diff` — różnica trafności względem modelu rank-0 (0 dla pierwszego);
 - `dse` — błąd standardowy tej różnicy; przewaga jest „pewna" dopiero, gdy
-  `elpd_diff` przekracza 2–3× `dse`. Tu jest tylko ~1,6×, więc modele są blisko;
+  `elpd_diff` przekracza ~2–3× `dse`. Tu jest tylko ~1,5–2×, więc modele są blisko;
 - `p_waic`/`p_loo` — efektywna liczba parametrów (miara złożoności);
 - `weight` — waga modelu w uśrednianiu (tu ~0,5/0,5, czyli remis).
 
@@ -62,8 +63,8 @@ członem na wstrząsy wtórne.
 ## Ostrzeżenia Pareto k-hat — co oznaczają i czy są problemem
 
 PSIS-LOO dla każdej obserwacji liczy diagnostykę **Pareto k**. Gdy `k > 0,7`,
-oszacowanie LOO dla tego punktu jest niewiarygodne. U nas `k` sięga ~9 (!), a
-51 obserwacji ma `k > 0,7`. Najgorsze punkty to komórki o najwyższych liczbach
+oszacowanie LOO dla tego punktu jest niewiarygodne. U nas `k` sięga ~8 (!), a
+~55 obserwacji ma `k > 0,7`. Najgorsze punkty to komórki o najwyższych liczbach
 zdarzeń, na czele z klastrem Tohoku 2011 (~22% punktów >0,7 pochodzi z 2011, a
 absolutnie najwyższe `k` to właśnie komórki Tohoku). **Czy to problem?** Tak — i
 dlatego ranking LOO traktujemy z rezerwą. Te same wpływowe, źle dopasowane

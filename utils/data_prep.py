@@ -12,8 +12,15 @@ import pandas as pd
 LAT_BINS = np.arange(24, 51, 2)   # 24..50 N
 LON_BINS = np.arange(122, 155, 2)  # 122..154 E
 
-PRIOR_MU = 2.0       # prior mean for alpha (log-intensity); exp(2) ~ 7.4 events/yr
-PRIOR_SIGMA_M1 = 2.0  # FIXED prior sd for Model 1 (no pooling)
+# Prior on the per-cell log-intensity alpha. Derived ONLY from external domain
+# knowledge (no statistics of our own counts -> no double-dipping):
+#   centre: published Japan rate ~1200 M>=4/yr  /  208 grid cells (geometry)
+#           = ~5.8 events/cell/yr  ->  mu_0 = log(5.8) ~ 1.8
+#   spread: wide/weakly-informative so +-3 sigma spans log[1, 3000] = [0, 8]
+#           -> sigma_0 = (8 - 1.8)/3 ~ 2.07
+# See notebooks/03_priors.ipynb for the full derivation and sensitivity analysis.
+PRIOR_MU = 1.8        # prior mean for alpha (log-intensity); exp(1.8) ~ 5.8 events/yr
+PRIOR_SIGMA_M1 = 2.07  # FIXED prior sd for Model 1 (no pooling)
 
 
 def assign_cells(df: pd.DataFrame) -> pd.DataFrame:

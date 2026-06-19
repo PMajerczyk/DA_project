@@ -21,10 +21,10 @@ ustalonym, wspólnym priorem:
 ```
 count[c,y] ~ Poisson(lambda_c)
 log(lambda_c) = alpha_c
-alpha_c ~ Normal(2, 2)        # sigma USTALONE z góry
+alpha_c ~ Normal(1.8, 2.07)   # sigma USTALONE z góry
 ```
 
-Kluczowe: parametr skali `sigma = 2` jest **ustalony**, nie estymowany. Każda
+Kluczowe: parametr skali `sigma = 2,07` jest **ustalony**, nie estymowany. Każda
 komórka „radzi sobie sama". **Kiedy zawodzi:** dla komórek z bardzo małą liczbą
 obserwacji oszacowanie opiera się głównie na priorze i danych z jednej komórki,
 co daje szerokie, niestabilne przedziały. Brak struktury przestrzennej oznacza
@@ -40,7 +40,7 @@ Log-intensywności pochodzą ze wspólnego rozkładu, którego parametry są
 count[c,y] ~ Poisson(lambda_c)
 log(lambda_c) = alpha_c
 alpha_c ~ Normal(mu_global, sigma_global)   # partial pooling
-mu_global    ~ Normal(2, 1)
+mu_global    ~ Normal(1.8, 1)               # środek z zewnętrznej stawki (nie z danych)
 sigma_global ~ HalfNormal(1)                 # KLUCZOWY parametr, estymowany
 ```
 
@@ -57,9 +57,9 @@ Shrinkage mierzymy na **skali logarytmicznej** (`alpha`), bo tam działa pooling
 na skali `lambda` skośność rozkładu zaciemnia obraz. Dla komórek ubogich w dane
 (< 10 zdarzeń łącznie, n = 57 komórek):
 
-- **punkt centralny**: Model 1 daje średnie `alpha ≈ 0,09`, Model 2 podciąga je
-  do `alpha ≈ 0,20`, czyli **w stronę średniej globalnej** `mu_global ≈ 1,34`;
-- **niepewność**: posteriorowe `sd(alpha)` spada średnio o **~10%**.
+- **punkt centralny**: Model 1 daje średnie `alpha ≈ 0,06`, Model 2 podciąga je
+  do `alpha ≈ 0,19`, czyli **w stronę średniej globalnej** `mu_global ≈ 1,33`;
+- **niepewność**: posteriorowe `sd(alpha)` spada średnio o **~11%**.
 
 Dla komórek bogatych w dane (> 200 zdarzeń) shrinkage wynosi ~0% — mają dość
 informacji, by zignorować hyperprior. Efekt jest więc **umiarkowany, ale dokładnie
@@ -73,7 +73,7 @@ w Japonii ma dużo danych.
 | Aspekt | Model 1 (no pooling) | Model 2 (partial pooling) |
 |---|---|---|
 | Założenie o komórkach | niezależne | uczą się od siebie |
-| `sigma` (skala) | ustalone = 2 | estymowane (`sigma_global` ≈ 1,33) |
+| `sigma` (skala) | ustalone = 2,07 | estymowane (`sigma_global` ≈ 1,33) |
 | Parametry | `alpha` (154) | `alpha` (154) + `mu_global`, `sigma_global` |
 | Komórki ubogie w dane | szerokie, niestabilne | shrinkage do średniej |
 | Uzasadnienie fizyczne | brak struktury | wspólna strefa tektoniczna |

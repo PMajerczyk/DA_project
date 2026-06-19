@@ -54,11 +54,11 @@ przetworzoną siatkę z 02 i zapisują wyniki MCMC, które konsumuje notebook 06
 
 ## Krótkie wyniki
 
-Kryteria informacyjne dają **niejednoznaczny** obraz: WAIC nieznacznie preferuje
-model hierarchiczny (Model 2), a PSIS-LOO odwraca ranking i wskazuje Model 1 —
-przy czym **oba dają ostrzeżenia**, bo zdominowane są przez ekstremalny rok 2011
-(Tohoku M9.0, Pareto k do ~9). Różnice są na poziomie ~1,6 błędu standardowego,
-więc statystycznie modele są blisko. **Wybieramy Model 2** ze względów
+Kryteria informacyjne dają **niejednoznaczny** obraz: WAIC i PSIS-LOO rozdzielają
+modele tylko o ~1,5–2 błędy standardowe, **oba dają ostrzeżenia** i **nie zgadzają
+się**, który model jest pierwszy (ranking odwraca się między kryteriami) — bo
+zdominowane są przez ekstremalny rok 2011 (Tohoku M9.0, Pareto k do ~8). To
+statystyczny remis. **Wybieramy Model 2** ze względów
 merytorycznych: zapewnia regularyzację (shrinkage), jego hierarchia jest poparta
 danymi (`sigma_global` ≈ 1,33 > 0), a wynikowa mapa jest gładsza i ma uczciwie
 oszacowaną niepewność. Wschodnie wybrzeże Japonii ma ~4× wyższą aktywność niż

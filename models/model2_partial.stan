@@ -21,6 +21,7 @@ data {
   int<lower=0> C;                 // number of cells
   array[N] int<lower=1> cell_id;  // cell index for each observation (1-based)
   array[N] int<lower=0> count;    // observed earthquake count
+  real mu_prior_mean;             // externally-derived prior centre for log-intensity (~1.8)
 }
 parameters {
   real mu_global;                 // hyperprior mean (log-intensity)
@@ -28,7 +29,7 @@ parameters {
   vector[C] alpha;                // per-cell log-intensity (centered)
 }
 model {
-  mu_global ~ normal(2, 1);
+  mu_global ~ normal(mu_prior_mean, 1);     // centre from external Japan rate / grid geometry
   sigma_global ~ normal(0, 1);              // half-normal via <lower=0> constraint
   alpha ~ normal(mu_global, sigma_global);  // partial pooling (centered)
   count ~ poisson_log(alpha[cell_id]);

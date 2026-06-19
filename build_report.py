@@ -44,7 +44,7 @@ $$\text{count}_{c,y}\sim\text{Poisson}(\lambda_c),\qquad \log\lambda_c=\alpha_c.
 
 | | **Model 1 — no pooling** | **Model 2 — partial pooling** |
 |---|---|---|
-| per-cell prior | $\alpha_c\sim\mathcal N(2,\,2)$ | $\alpha_c\sim\mathcal N(\mu_g,\sigma_g)$ |
+| per-cell prior | $\alpha_c\sim\mathcal N(1.8,\,2.07)$ | $\alpha_c\sim\mathcal N(\mu_g,\sigma_g)$ |
 | scale $\sigma$ | **fixed** | **estimated** ($\sigma_g\sim$ HalfNormal(1)) |
 | cells | independent | borrow strength (shrinkage) |
 
@@ -54,11 +54,14 @@ emit `log_lik` for model comparison.
 """),
     md(r"""
 ## 3. Priors
-The prior $\alpha\sim\mathcal N(2,2)$ was derived from physical bounds: a typical
-active cell ~exp(2)≈7 events/yr, with ±3σ spanning log-rates 0→8 (1→~3000
-events/yr, covering the 2011 extreme in the tail). **Both** prior predictive
-checks pass — implied rates and simulated counts are positive, right-skewed, and
-within the geophysical bound while still covering the observed range (notebook 03).
+The prior $\alpha\sim\mathcal N(1.8,2.07)$ is derived **only from external
+knowledge** (no data-leakage): a published Japan rate (~1200 M≥4/yr) ÷ grid
+geometry (208 cells) ⇒ centre $\log(5.8)\approx1.8$; shape from the
+Gutenberg–Richter law (b≈1); tail to ~3000/yr from documented Tohoku-scale
+aftershock productivity, giving ±3σ over log-rates 0→8. **Both** prior predictive
+checks pass, and a **prior sensitivity analysis** confirms the posterior is robust
+to reasonable prior changes — the chosen centre does not drive the results
+(notebook 03; cf. Räty et al. 2023, WAMBS checklist).
 """),
     md(r"""
 ## 4–5. Posteriors
@@ -80,9 +83,9 @@ display_image("figures/05_posterior_map.png", width=480)
 """),
     md(r"""
 ## 6. Model comparison & final assessment
-- **WAIC:** Model 2 wins by ~61 elpd (~1.6 SE) — *with warning*.
-- **PSIS-LOO:** ranking **flips**, Model 1 wins by ~26 elpd (~1.6 SE) — *with
-  warning*; Pareto-$k$ up to ~9, concentrated on the highest-count / 2011 cells.
+- **WAIC & PSIS-LOO:** both separate the models by only ~1.5–2 SE, **both warn**,
+  and they **disagree on which ranks first** (the order flips between the two
+  criteria); Pareto-$k$ up to ~8, concentrated on the highest-count / 2011 cells.
 
 The criteria **disagree and both warn**, because a few extreme, misspecified
 observations (2011 Tohoku) dominate them — so they cannot crown a winner on their

@@ -10,9 +10,10 @@ an uncertainty-aware posterior map of seismic intensity.
 **Tooling:** CmdStanPy + ArviZ + GeoPandas + Matplotlib (Python, Jupyter).
 
 ## Results in one line
-WAIC narrowly favours the hierarchical model, PSIS-LOO flips to the no-pooling
-model, and **both criteria warn** — driven by the 2011 Tohoku (M9.0) outlier
-(Pareto-k up to ~9). The criteria are inconclusive; we select **Model 2** on
+WAIC and PSIS-LOO separate the models by only ~1.5–2 SE, **both warn**, and they
+disagree on which ranks first (the order even flips between the two criteria) —
+driven by the 2011 Tohoku (M9.0) outlier (Pareto-k up to ~8). The criteria are a
+statistical near-tie / inconclusive; we select **Model 2** on
 modelling-quality grounds (shrinkage, data-supported hierarchy, better map).
 
 ## Repository layout
