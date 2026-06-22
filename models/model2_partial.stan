@@ -8,7 +8,7 @@
 //   count[n] ~ Poisson(lambda[cell[n]])
 //   log(lambda[c]) = alpha[c]
 //   alpha[c] ~ Normal(mu_global, sigma_global)   // partial pooling
-//   mu_global ~ Normal(2, 1)
+//   mu_global ~ Normal(1.8, 1)   // externally-derived centre (Japan ~1200 M≥4/yr / 208 cells)
 //   sigma_global ~ HalfNormal(0, 1)              // KEY: estimated, not fixed
 //
 // Parameterization: this dataset is INFORMATIVE (most cells have many cell-years
