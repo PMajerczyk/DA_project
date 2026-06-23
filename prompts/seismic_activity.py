@@ -751,7 +751,9 @@ for idx in worst_idx:
 
     code(r"""
 os.makedirs("../data/processed", exist_ok=True)
-idata1.to_netcdf("../data/processed/idata_model1.nc")
+import pathlib
+pathlib.Path("../data/processed/idata_model1.nc").unlink(missing_ok=True)
+idata1.to_netcdf("../data/processed/idata_model1.nc", overwrite_existing=True, engine="netcdf4")
 print("Saved idata_model1.nc")
 """),
 
@@ -867,80 +869,129 @@ for idx in worst2:
           f"count={obs2[idx]}, pp_mean={pp2_mean[idx]:.1f}")
 """),
 
-    # --- Prior vs posterior map (NEW) ----------------------------------------
-    md(r"""
-### 5.4 Prior vs posterior intensity map
+    code(r"""
+# Top-15 cells by total events — observed vs predicted (mirrors Model 1 plot)
+cell_totals2 = meta.set_index("cell_id")["total_events"]
+top_cells_idx2 = np.argsort(
+    [cell_totals2.get(cells[cell_to_int[c]-1], 0)
+     if c in cell_to_int else 0
+     for c in cells]
+)[-15:][::-1]
 
-The **grey map** shows the prior predictive mean intensity (drawn purely from
-the prior, before seeing any data). The **colour map** shows the posterior mean
-intensity (after conditioning on the data). Comparing the two reveals what the
-data actually taught the model — where the posterior deviates strongly from the
-prior, the data were informative.
+fig, ax = plt.subplots(figsize=(11, 4))
+x2 = np.arange(len(top_cells_idx2))
+ax.bar(x2 - 0.2, [obs2[top_cells_idx2[i]] for i in range(len(top_cells_idx2))],
+       0.4, label="Observed (mean)", color="steelblue")
+ax.bar(x2 + 0.2, [pp2_mean[top_cells_idx2[i]] for i in range(len(top_cells_idx2))],
+       0.4, label="Posterior predictive mean", color="orange", alpha=0.8)
+ax.set_xticks(x2); ax.set_xticklabels([cells[i] for i in top_cells_idx2], rotation=45, ha="right")
+ax.set_ylabel("Events"); ax.set_title("Model 2 — PPC: observed vs predicted (top 15 cells)")
+ax.legend(); plt.tight_layout(); plt.show()
+"""),
+
+    # --- Prior vs posterior map -----------------------------------------------
+    md(r"""
+### 5.4 Prior vs posterior intensity map — both models
+
+The **grey map** (left) shows the shared prior predictive mean intensity (before
+seeing any data — identical for both models since they share the same prior
+centre). The **middle** and **right** maps show the posterior mean intensity for
+Model 1 and Model 2 respectively. Comparing all three reveals what the data
+taught each model: where the posterior deviates strongly from the prior, the
+data were informative. Model 2 produces a smoother map because data-poor cells
+are pulled toward the global mean (shrinkage).
 """),
 
     code(r"""
 import geopandas as gpd
 from shapely.geometry import box
 
-# ---- Prior predictive mean per cell (from prior draws, no data) ------------
-N_PRIOR = 2000
-prior_lam_per_cell = np.zeros(len(cells))
-for _ in range(N_PRIOR):
-    mu_draw  = RNG.normal(PRIOR_MU, 1)
-    sig_draw = abs(RNG.normal(0, 1))
-    alpha_draw = RNG.normal(mu_draw, sig_draw, len(cells))
-    prior_lam_per_cell += np.exp(alpha_draw)
-prior_lam_per_cell /= N_PRIOR
+# ---- Prior predictive median per cell (shared prior, no data) ---------------
+# Prior: alpha_c ~ N(PRIOR_MU=1.8, PRIOR_SIGMA_M1=2.07).
+# All cells share the SAME prior — there is no geographic information in it.
+# We show the median exp(PRIOR_MU) ≈ 6 as a single uniform colour to make this
+# explicit. The prior uncertainty (90% interval: ~0.1–340 ev/yr) is annotated
+# in the title rather than shown spatially, because spatial variation would
+# falsely imply the prior encodes geographic knowledge.
+prior_lam_scalar = np.exp(PRIOR_MU)   # ≈ 6.05 ev/yr — median of LogNormal
+prior_p05 = np.exp(PRIOR_MU - 1.645 * PRIOR_SIGMA_M1)
+prior_p95 = np.exp(PRIOR_MU + 1.645 * PRIOR_SIGMA_M1)
 
-# ---- Posterior mean per cell (from idata2) ---------------------------------
-post_alpha = idata2.posterior["alpha"].mean(("chain","draw")).values  # shape (C,)
-post_lam   = np.exp(post_alpha)
+# ---- Posterior mean per cell — Model 1 -------------------------------------
+idata1_loaded = az.from_netcdf("../data/processed/idata_model1.nc")
+post1_alpha = idata1_loaded.posterior["alpha"].mean(("chain","draw")).values
+post1_lam   = np.exp(post1_alpha)
 
-# ---- Build GeoDataFrame ----------------------------------------------------
-geoms, prior_vals, post_vals, cell_ids = [], [], [], []
-for i, cid in enumerate(cells):
-    lat_i, lon_i = map(int, cid.split("_"))
-    lat0, lat1 = LAT_BINS[lat_i], LAT_BINS[lat_i+1]
-    lon0, lon1 = LON_BINS[lon_i], LON_BINS[lon_i+1]
-    geoms.append(box(lon0, lat0, lon1, lat1))
-    prior_vals.append(prior_lam_per_cell[i])
-    post_vals.append(post_lam[i])
-    cell_ids.append(cid)
+# ---- Posterior mean per cell — Model 2 -------------------------------------
+post2_alpha = idata2.posterior["alpha"].mean(("chain","draw")).values
+post2_lam   = np.exp(post2_alpha)
+
+# ---- Build GeoDataFrame — ALL 208 cells so the prior map is fully tiled ----
+cell_to_idx = {c: i for i, c in enumerate(cells)}  # active cells index
+geoms, prior_vals, post1_vals, post2_vals, cell_ids = [], [], [], [], []
+for lat_i in range(len(LAT_BINS) - 1):
+    for lon_i in range(len(LON_BINS) - 1):
+        cid = f"{lat_i}_{lon_i}"
+        lat0, lat1 = LAT_BINS[lat_i], LAT_BINS[lat_i+1]
+        lon0, lon1 = LON_BINS[lon_i], LON_BINS[lon_i+1]
+        geoms.append(box(lon0, lat0, lon1, lat1))
+        prior_vals.append(prior_lam_scalar)
+        if cid in cell_to_idx:
+            idx = cell_to_idx[cid]
+            post1_vals.append(post1_lam[idx])
+            post2_vals.append(post2_lam[idx])
+        else:
+            post1_vals.append(np.nan)             # inactive cell → grey
+            post2_vals.append(np.nan)
+        cell_ids.append(cid)
 
 gdf = gpd.GeoDataFrame(
-    {"cell_id": cell_ids, "prior_mean": prior_vals, "post_mean": post_vals},
+    {"cell_id": cell_ids, "prior_mean": prior_vals,
+     "post1_mean": post1_vals, "post2_mean": post2_vals},
     geometry=geoms, crs="EPSG:4326")
 
-# ---- Plot side by side -----------------------------------------------------
-fig, axes = plt.subplots(1, 2, figsize=(15, 7), constrained_layout=True)
+# ---- Plot: prior | M1 posterior | M2 posterior -----------------------------
+fig, axes = plt.subplots(1, 3, figsize=(20, 7), constrained_layout=True)
 
-vmin = min(gdf["prior_mean"].min(), gdf["post_mean"].min())
-vmax = max(gdf["prior_mean"].quantile(0.98), gdf["post_mean"].quantile(0.98))
+vmax = max(gdf["post1_mean"].quantile(0.98), gdf["post2_mean"].quantile(0.98))
+vmin = 0
 
-# Grey prior map
-gdf.plot(column="prior_mean", ax=axes[0], cmap="Greys",
-         vmin=vmin, vmax=vmax, legend=True,
-         legend_kwds={"label": "Events / year", "shrink": 0.7})
+# Prior panel: uniform colour = median of the shared prior (no geographic info)
+import matplotlib.colors as mcolors
+prior_grid = np.full((len(LAT_BINS)-1, len(LON_BINS)-1), prior_lam_scalar)
+im0 = axes[0].imshow(prior_grid, origin="lower", aspect="auto",
+                     interpolation="nearest",
+                     extent=[LON_BINS[0], LON_BINS[-1], LAT_BINS[0], LAT_BINS[-1]],
+                     cmap="YlOrRd", vmin=vmin, vmax=vmax)
 axes[0].set_xlim(122, 154); axes[0].set_ylim(24, 50)
-axes[0].set_title("Prior predictive mean intensity\n(before data)", fontsize=12)
+axes[0].set_title(
+    f"Prior predictive median ≈ {prior_lam_scalar:.1f} ev/yr\n"
+    f"(uniform — no geographic info; 90% CI: {prior_p05:.1f}–{prior_p95:.0f} ev/yr)",
+    fontsize=10)
 axes[0].set_xlabel("Longitude"); axes[0].set_ylabel("Latitude")
+fig.colorbar(im0, ax=axes[0], label="Events / year", shrink=0.7)
 
-# Colour posterior map
-gdf.plot(column="post_mean", ax=axes[1], cmap="YlOrRd",
+gdf.plot(column="post1_mean", ax=axes[1], cmap="YlOrRd",
          vmin=vmin, vmax=vmax, legend=True,
          legend_kwds={"label": "Events / year", "shrink": 0.7})
 axes[1].set_xlim(122, 154); axes[1].set_ylim(24, 50)
-axes[1].set_title("Posterior mean intensity (Model 2)\n(after data)", fontsize=12)
+axes[1].set_title("Model 1 posterior mean\n(No Pooling)", fontsize=11)
 axes[1].set_xlabel("Longitude")
 
-fig.suptitle("Prior vs Posterior — what the data taught the model",
+gdf.plot(column="post2_mean", ax=axes[2], cmap="YlOrRd",
+         vmin=vmin, vmax=vmax, legend=True,
+         legend_kwds={"label": "Events / year", "shrink": 0.7})
+axes[2].set_xlim(122, 154); axes[2].set_ylim(24, 50)
+axes[2].set_title("Model 2 posterior mean\n(Partial Pooling — shrinkage)", fontsize=11)
+axes[2].set_xlabel("Longitude")
+
+fig.suptitle("Prior vs Posterior — what the data taught each model",
              fontsize=13, fontweight="bold")
 os.makedirs("../report/figures", exist_ok=True)
 plt.savefig("../report/figures/05_prior_vs_posterior_map.png", dpi=130, bbox_inches="tight")
 plt.show()
-print("\nKey observation: where the posterior (colour) deviates strongly from the")
-print("prior (grey), the data were highly informative about that cell's intensity.")
-print("Eastern coast cells are much hotter in the posterior than the uniform prior suggests.")
+print("Model 2 map is smoother: data-poor cells (west) are pulled toward the global mean.")
+print("Eastern coast cells are similarly hot in both posteriors — data-rich, unaffected by shrinkage.")
 """),
 
     # --- Shrinkage -----------------------------------------------------------
@@ -993,7 +1044,7 @@ print(f"  SD reduction:  {((alpha1_sd[poor_mask]-alpha2_sd[poor_mask])/alpha1_sd
 
     code(r"""
 fig, ax = plt.subplots(figsize=(9, 7), constrained_layout=True)
-gdf.plot(column="post_mean", ax=ax, cmap="YlOrRd", legend=True,
+gdf.plot(column="post2_mean", ax=ax, cmap="YlOrRd", legend=True,
          legend_kwds={"label": "Posterior mean events/year", "shrink": 0.7})
 ax.set_xlim(122, 154); ax.set_ylim(24, 50)
 ax.set_xlabel("Longitude"); ax.set_ylabel("Latitude")
@@ -1003,7 +1054,8 @@ plt.show()
 """),
 
     code(r"""
-idata2.to_netcdf("../data/processed/idata_model2.nc")
+pathlib.Path("../data/processed/idata_model2.nc").unlink(missing_ok=True)
+idata2.to_netcdf("../data/processed/idata_model2.nc", overwrite_existing=True, engine="netcdf4")
 print("Saved idata_model2.nc")
 """),
 
