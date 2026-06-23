@@ -152,7 +152,9 @@ ax.bar(yearly["year"], yearly["count"], color="steelblue", edgecolor="k", linewi
 ax.axhline(yearly["count"].median(), color="orange", ls="--", label=f'Median {yearly["count"].median():.0f}')
 ax.set_xlabel("Year"); ax.set_ylabel("Events (M≥4.0)")
 ax.set_title("Annual event count — Japan 2000-2023")
-ax.legend(); plt.tight_layout(); plt.show()
+ax.legend(); plt.tight_layout()
+plt.savefig("../report/figures/02_annual_counts.png", dpi=130, bbox_inches="tight")
+plt.show()
 print(f"2011 count: {yearly.loc[yearly.year==2011,'count'].values[0]}  "
       f"(median other years: {yearly.loc[yearly.year!=2011,'count'].median():.0f})")
 """),
@@ -491,6 +493,7 @@ plt.suptitle("Generative DAGs — both models share the same likelihood;\n"
              "the structural difference is whether σ is fixed or estimated.",
              fontsize=10, y=0.02)
 plt.tight_layout(rect=[0, 0.06, 1, 1])
+plt.savefig("../report/figures/03_dag.png", dpi=130, bbox_inches="tight")
 plt.show()
 """),
 
@@ -565,7 +568,9 @@ ax.hist(np.log1p(stan_data["count"]), bins=50, density=True,
         color="steelblue", alpha=0.6, label="Observed counts")
 ax.set_xlabel("log(1 + count)"); ax.set_ylabel("density")
 ax.set_title("Prior predictive check 2 — simulated vs observed counts")
-ax.legend(); plt.tight_layout(); plt.show()
+ax.legend(); plt.tight_layout()
+plt.savefig("../report/figures/04_prior_predictive_check.png", dpi=130, bbox_inches="tight")
+plt.show()
 """),
 
     # --- Prior sensitivity ---------------------------------------------------
@@ -953,7 +958,7 @@ gdf = gpd.GeoDataFrame(
 # ---- Plot: prior | M1 posterior | M2 posterior -----------------------------
 fig, axes = plt.subplots(1, 3, figsize=(20, 7), constrained_layout=True)
 
-vmax = max(gdf["post1_mean"].quantile(0.98), gdf["post2_mean"].quantile(0.98))
+vmax = max(gdf["post1_mean"].max(), gdf["post2_mean"].max())
 vmin = 0
 
 # Prior panel: uniform colour = median of the shared prior (no geographic info)
@@ -1030,6 +1035,7 @@ axes[1].set_xscale("log")
 
 plt.suptitle("Shrinkage effect: partial pooling pulls data-poor cells toward mu_global",
              fontsize=11)
+plt.savefig("../report/figures/06_shrinkage.png", dpi=130, bbox_inches="tight")
 plt.show()
 
 poor_mask = cell_totals_arr < 10
@@ -1044,12 +1050,13 @@ print(f"  SD reduction:  {((alpha1_sd[poor_mask]-alpha2_sd[poor_mask])/alpha1_sd
 
     code(r"""
 fig, ax = plt.subplots(figsize=(9, 7), constrained_layout=True)
+vmax_single = gdf["post2_mean"].max()
 gdf.plot(column="post2_mean", ax=ax, cmap="YlOrRd", legend=True,
+         vmin=0, vmax=vmax_single,
          legend_kwds={"label": "Posterior mean events/year", "shrink": 0.7})
 ax.set_xlim(122, 154); ax.set_ylim(24, 50)
 ax.set_xlabel("Longitude"); ax.set_ylabel("Latitude")
 ax.set_title("Model 2 — Posterior mean seismic intensity per 2°×2° cell")
-plt.savefig("../report/figures/05_posterior_map.png", dpi=130, bbox_inches="tight")
 plt.show()
 """),
 
@@ -1126,7 +1133,9 @@ for ax, loo, title in zip(axes, [loo1, loo2], ["Model 1", "Model 2"]):
     ax.set_title(f"{title} — Pareto-k diagnostics")
     ax.legend(fontsize=8)
     print(f"{title}: k>0.7: {(k>0.7).sum()}, max k={k.max():.2f}")
-plt.tight_layout(); plt.show()
+plt.tight_layout()
+plt.savefig("../report/figures/07_pareto_k.png", dpi=130, bbox_inches="tight")
+plt.show()
 """),
 
     code(r"""
@@ -1214,18 +1223,22 @@ one extra parameter, honest uncertainty map.
 
     code(r"""
 from utils.display import display_image
-print("Raw earthquake epicentres — input data:")
-display_image("../report/figures/01_raw_map.png", width=520)
-"""),
 
-    code(r"""
-print("Prior predictive vs posterior intensity (Model 2):")
-display_image("../report/figures/05_prior_vs_posterior_map.png", width=700)
-"""),
+figures = [
+    ("../report/figures/01_raw_map.png",              520, "Fig 1 — Raw earthquake epicentres (input data)"),
+    ("../report/figures/02_annual_counts.png",         520, "Fig 2 — Annual event count (2011 Tohoku outlier)"),
+    ("../report/figures/03_dag.png",                   620, "Fig 3 — Generative DAGs (Model 1 & 2)"),
+    ("../report/figures/04_prior_predictive_check.png",520, "Fig 4 — Prior predictive check 2"),
+    ("../report/figures/05_prior_vs_posterior_map.png",700, "Fig 5 — Prior vs Posterior intensity map"),
+    ("../report/figures/06_shrinkage.png",             620, "Fig 6 — Shrinkage effect (M1 vs M2)"),
+    ("../report/figures/07_pareto_k.png",              620, "Fig 7 — Pareto-k diagnostics (PSIS-LOO)"),
+]
 
-    code(r"""
-print("Model 2 posterior mean seismic intensity — headline deliverable:")
-display_image("../report/figures/05_posterior_map.png", width=520)
+for path, width, caption in figures:
+    print(f"\n{'='*60}")
+    print(caption)
+    print('='*60)
+    display_image(path, width=width)
 """),
 
 ]  # end cells
